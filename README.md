@@ -1,5 +1,6 @@
 # ISL
-Overview
+
+## Overview
 
 There are quite a few attempts to teach the Indian Sign Language (ISL) to interested persons. There are NGOs working in the area to promote the ISL so that the deaf persons could better communicate with others, thus enriching their lives and creating opportunities for employment. However the challenge is that these efforts require a lay person to learn the ISL, which is hard to motivate since the need is not felt beyond the initial rush of the good intention. As a result, the deaf person remains marginalised and not able to fulfill their potential.
 
@@ -18,9 +19,7 @@ The speech is translated into text and that is then further translated into a se
 These gestures are then applied on a preselected photo of the FB person to build a video, as if the FB person is speaking in ISL.
 The video is seen on the app by the DP.
 
-
-
-Opportunity
+## Opportunity
 
 The tech developed for this initiative will always be free to the individuals. According to the wikipedia article, India has close to 63 million deaf people. The same article says that only 26.1% of the 15 million deaf persons within the working age are employed. One could only guess this to be the case due to a) lack of education within the deaf community; and b) due to their inherent lack of ability to communicate. This population could benefit immensely if they have access to the proposed app through which they could carry out meaningful conversation with the general public. 
 
