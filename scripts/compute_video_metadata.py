@@ -31,8 +31,8 @@ def main(input_csv, output_csv):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_csv', help='Path to input CSV file')
-    parser.add_argument('--output_csv', help='Path to output CSV file')
+    parser.add_argument('--input_csv', help='CSV containing path and hash')
+    parser.add_argument('--output_csv', help='CSV containing video metadata')
     args = parser.parse_args()
     main(args.input_csv, args.output_csv)
 
