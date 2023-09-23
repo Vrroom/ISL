@@ -96,20 +96,28 @@ if __name__ == "__main__" :
     metadata = get_metadata_by_hash(args.metadata_file, pose_hash)
     width, height = metadata['width'], metadata['height']
 
-    image = np.ones((height, width, 3))
-
     with open(pose_pickle, 'rb') as fp : 
         pose_sequence = pickle.load(fp)
     
-    idx_to_coordinates = {}
-    idx = 0
-    minx = miny = -1
-    maxx = maxy = -1
- 
     for i in range(len(pose_sequence)) :
+        image = np.ones((height, width, 3))
         landmark_list = Wrapper(dict(landmark=[Wrapper(_) for _ in pose_sequence[i]['landmarks']]))
 
-        image = np.ones((height, width, 3))
+        xs, ys = [], []
+        for idx, landmark in enumerate(landmark_list.landmark) :
+            landmark_px = mp_drawing._normalized_to_pixel_coordinates(landmark.x, landmark.y, width, height)
+            if landmark_px:
+                xs.append(landmark_px[0])
+                ys.append(landmark_px[1])
+
+        minx, maxx = min(xs), max(xs)
+        miny, maxy = min(ys), max(ys)
+
+        cv2.line(image, (minx, miny), (maxx, miny), (0,255,0),1)
+        cv2.line(image, (minx, miny), (minx, maxy), (0,255,0),1)
+        cv2.line(image, (minx, maxy), (maxx, maxy), (0,255,0),1)
+        cv2.line(image, (maxx, miny), (maxx, maxy), (0,255,0),1)
+    
         # Draw the pose annotation on the image.
         mp_drawing.draw_landmarks(
                 image,
