@@ -6,6 +6,7 @@ import os
 import os.path as osp
 import mediapipe as mp
 import numpy as np
+from scenedetect import detect, AdaptiveDetector, split_video_ffmpeg
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -72,6 +73,8 @@ if __name__ == "__main__" :
     print('Video has fps ...', cap.get(cv2.CAP_PROP_FPS))
     print('Video has frame count ...', cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print('Video has duration (s) ...', cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS))
+    print('Video has cut scenes ...', len(detect(vid, AdaptiveDetector())))
+
     with mp_pose.Pose(
             static_image_mode=False,
             model_complexity=2,
