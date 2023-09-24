@@ -111,11 +111,9 @@ if __name__ == "__main__" :
 
     minx, maxx = min(xs), max(xs)
     miny, maxy = min(ys), max(ys)
-    image = np.ones((height, width, 3))
-
 
     for i in range(len(pose_sequence)) :
-        image = np.ones((height-1, width-1, 3))
+        image = np.ones((height, width, 3))
         landmark_list = Wrapper(dict(landmark=[Wrapper(_) for _ in pose_sequence[i]['landmarks']]))
             
         # Draw the pose annotation on the image.
