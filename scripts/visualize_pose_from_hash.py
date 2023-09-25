@@ -9,25 +9,11 @@ import mediapipe as mp
 import numpy as np
 import pandas as pd
 import isl_utils as islutils
+from isl_utils import Wrapper
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
-
-
-
-class Wrapper :
-    """ Just a wrapper class so that we can call the `drawing_landmark` function """
-    def __init__(self, dictionary):
-        self.dictionary = dictionary
-    
-    def __getattr__ (self, x) : 
-        return self.dictionary.get(x)
-
-    def HasField (self, x) :
-        return x in self.dictionary
-
-
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description='Visualize pose sequence')
