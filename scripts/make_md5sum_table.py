@@ -7,29 +7,8 @@ import urllib.request
 import zipfile
 from functools import wraps
 import hashlib
+import isl_utils as islutil
 
-def listdir (path) :
-    """
-    Convenience function to get
-    full path details while calling os.listdir
-
-    Also ensures that the order is always the same.
-
-    Parameters
-    ----------
-    path : str
-        Path to be listed.
-    """
-    paths = [osp.join(path, f) for f in os.listdir(path)]
-    paths.sort()
-    return paths
-
-def allfiles (directory) :
-    """ List full paths of all files/directory in directory """
-    for f in listdir(directory) :
-        yield f
-        if osp.isdir(f) :
-            yield from allfiles(f)
 
 def skip_if_processed(task_file="/tmp/completed_tasks.txt"):
     """
@@ -99,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--table_path', required=True, help='Path of the table')
     args = parser.parse_args()
 
-    video_files = list(allfiles(args.video_dir))
+    video_files = list(islutil.allfiles(args.video_dir))
     md5sums = list(pmap(calculate_md5, video_files))
 
     # remove the files which couldn't be computed

@@ -3,22 +3,8 @@ import numpy as np
 import os.path as osp
 import json
 import argparse
+import isl_utils as islutils
 
-def listdir (path) :
-    """
-    Convenience function to get 
-    full path details while calling os.listdir
-
-    Also ensures that the order is always the same.
-
-    Parameters
-    ----------
-    path : str
-        Path to be listed.
-    """
-    paths = [osp.join(path, f) for f in os.listdir(path)]
-    paths.sort()
-    return paths
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Delete long videos')
@@ -31,7 +17,7 @@ if __name__ == "__main__":
     with open(args.video_links_file) as fp:
         links = [_.strip() for _ in fp.readlines()]
 
-    videos_paths = listdir(osp.join(args.video_dir, args.dataset_name))
+    videos_paths = islutils.listdir(osp.join(args.video_dir, args.dataset_name))
  
     for link in links : 
         json_path = osp.join(args.json_dir, args.dataset_name, f'{link}.json')
