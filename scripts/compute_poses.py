@@ -6,13 +6,11 @@ import multiprocessing as mp_
 import csv
 from functools import wraps
 import cv2
-from PIL import Image
-import random
 import argparse
 import os
 import os.path as osp
 import mediapipe as mp
-import numpy as np
+
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -70,29 +68,6 @@ def pmap(function, items, chunksize=None) :
         mapper = p.imap(function, items, chunksize=chunksize)
         return list(tqdm(mapper, total=len(items)))
 
-
-def listdir (path) :
-    """
-    Convenience function to get
-    full path details while calling os.listdir
-
-    Also ensures that the order is always the same.
-
-    Parameters
-    ----------
-    path : str
-        Path to be listed.
-    """
-    paths = [osp.join(path, f) for f in os.listdir(path)]
-    paths.sort()
-    return paths
-
-def allfiles (directory) :
-    """ List full paths of all files/directory in directory """
-    for f in listdir(directory) :
-        yield f
-        if osp.isdir(f) :
-            yield from allfiles(f)
 
 @skip_if_processed()
 def compute_poses_for_video (data) :
