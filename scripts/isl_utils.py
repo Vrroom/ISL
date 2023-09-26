@@ -10,6 +10,48 @@ import multiprocessing as mp
 import shapely.geometry as sg
 import shapely.affinity as sa
 from functools import wraps
+from copy import deepcopy
+import math
+
+def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, image_height) :
+    """
+    Poses returned by mediapipe are normalized with respect to the image width and height
+    so that they are in the range [0, 1] for both x and y coordinates. This does the inverse operation
+    """
+    x_px = min(math.floor(normalized_x * image_width), image_width - 1)
+    y_px = min(math.floor(normalized_y * image_height), image_height - 1)
+    return x_px, y_px
+
+def normalize_pose_sequence (pose_sequence, width, height): 
+    """
+    Normalize the pose sequence so that the whole sequence sits snuggly in a [-1, 1] by [-1, 1] box.
+    """
+    # calculate the fitting box
+    xs, ys = [], []
+    n_pose_sequence = deepcopy(pose_sequence)
+    for i in range(len(pose_sequence)) :
+        landmark_list = Wrapper(dict(landmark=[Wrapper(_) for _ in pose_sequence[i]['landmarks']]))
+        for idx, landmark in enumerate(landmark_list.landmark) :
+            landmark_px = normalized_to_pixel_coordinates(landmark.x, landmark.y, width, height)
+            n_pose_sequence[i]['landmarks'][idx]['x'] = landmark_px[0]
+            n_pose_sequence[i]['landmarks'][idx]['y'] = landmark_px[1]
+            xs.append(landmark_px[0])
+            ys.append(landmark_px[1])
+    minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
+    box = BBox(minx, miny, maxx, maxy, maxx - minx, maxy - miny)
+    # now fit a square shaped box
+    nbox = box.normalized()
+    center = nbox.center()
+    cx, cy = center.real, center.imag
+    side = nbox.h
+    # transform the pose sequence
+    for i in range(len(n_pose_sequence)) :
+        for j in range(len(n_pose_sequence[i]['landmarks'])) :
+            n_pose_sequence[i]['landmarks'][j]['x'] -= cx
+            n_pose_sequence[i]['landmarks'][j]['x'] *= 2.0 / side
+            n_pose_sequence[i]['landmarks'][j]['y'] -= cy
+            n_pose_sequence[i]['landmarks'][j]['y'] *= -2.0 / side
+    return n_pose_sequence
 
 def listdir (path) :
     """
