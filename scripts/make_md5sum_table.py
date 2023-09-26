@@ -1,11 +1,6 @@
 import argparse
-from tqdm import tqdm
-import multiprocessing as mp
 import os
 import os.path as osp
-import urllib.request
-import zipfile
-from functools import wraps
 import hashlib
 import isl_utils as islutil
 

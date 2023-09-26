@@ -1,17 +1,12 @@
 # precompute and store poses somewhere
-import hashlib
 import pickle
-from tqdm import tqdm
-import multiprocessing as mp_
 import csv
-from functools import wraps
 import cv2
 import argparse
 import os
 import os.path as osp
 import mediapipe as mp
 from isl_utils import pmap, skip_if_processed
-
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles

@@ -1,20 +1,9 @@
 import argparse
-import multiprocessing as mp
-from tqdm import tqdm
 import os
 import os.path as osp
 import subprocess 
 import json
-
-def pmap(function, items, chunksize=None) :
-    """ parallel mapper using Pool with progress bar """
-    cpu_count = mp.cpu_count()
-    if chunksize is None :
-        chunksize = len(items) // (cpu_count * 5)
-    chunksize = max(1, chunksize)
-    with mp.Pool(cpu_count) as p :
-        mapper = p.imap(function, items, chunksize=chunksize)
-        return list(tqdm(mapper, total=len(items)))
+from isl_utils import pmap
 
 def video_downloader (data) :
     link, dir_path = data
@@ -40,7 +29,6 @@ def main(video_links_path, save_path):
     dir_path = osp.join(save_path, base_name)
     
     os.makedirs(dir_path, exist_ok=True)
-    # Your logic here
     data = list(zip(video_links, [dir_path] * len(video_links)))
     list(pmap(video_downloader, data, chunksize=500))
 

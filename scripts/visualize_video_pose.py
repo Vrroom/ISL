@@ -13,11 +13,9 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
-
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description='Visualize random video')
     parser.add_argument('--video_dir', type=str, help='Directory containing videos')
-    parser.add_argument('--smaller_dim', type=int, help='Size of rendered visualization')
     args = parser.parse_args()
 
     # Initialize video capture
@@ -55,7 +53,7 @@ if __name__ == "__main__" :
                     results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-            cv2.imshow(f'Annotated Video | {vid}', islutils.aspectRatioPreservingResize(image, args.smaller_dim))
+            cv2.imshow(f'Annotated Video | {vid}', islutils.aspectRatioPreservingResize(image, 512))
 
             # Break loop if 'q' is pressed
             if cv2.waitKey(1) & 0xFF == ord('q'):

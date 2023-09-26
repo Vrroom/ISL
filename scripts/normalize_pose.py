@@ -24,7 +24,6 @@ def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, ima
     y_px = min(math.floor(normalized_y * image_height), image_height - 1)
     return x_px, y_px
 
-
 def normalize_pose_sequence (pose_sequence, width, height): 
     """
     Normalize the pose sequence so that the whole sequence 

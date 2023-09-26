@@ -66,7 +66,7 @@ if __name__ == "__main__" :
 
     # Here, I'm demonstrating model use. I'm using the training dataset that I created using your normalization code.
     x = torch.from_numpy(np.load('../rest_pose_dataset/rest_poses.npy')).float()[:1000]
-    # Here we have N = 10,000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
+    # Here we have N = 1000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
     # dimensions. Thus, it is a 4 dimensional array. Before doing prediction, we'll "flatten" the last 2 dimensions.
     # For a 2D array - [[1, 2], [3, 4, 5], [6, 7]], this operation would convert it into a 1D array - [1, 2, 3, 4, 5, 6, 7]
     N, L, P, D = x.shape 

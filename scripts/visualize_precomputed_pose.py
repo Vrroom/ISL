@@ -14,13 +14,22 @@ mp_drawing_styles = mp.solutions.drawing_styles
 mp_pose = mp.solutions.pose
 
 if __name__ == "__main__" :
-    parser = argparse.ArgumentParser(description='Visualize random pose sequence')
-    parser.add_argument('--pose_dir', type=str, help='Directory containing pose sequences')
-    parser.add_argument('--metadata_file', type=str, help='File containing metadata')
+    parser = argparse.ArgumentParser(description='Visualize poses')
+    parser.add_argument('--pose_dir', type=str, required=True, help='Directory containing pose sequences')
+    parser.add_argument('--metadata_file', type=str, required=True, help='File containing metadata')
+    parser.add_argument('--pose_hash', default=None, type=str, help='(Optional) Hash of the pose sequence')
+    parser.add_argument('--vis_bounds', action='store_true', default=False, help='(Optional) Visualize bounds of the pose sequence')
+
     args = parser.parse_args()
 
-    pose_pickle = random.choice(list(islutils.allfiles(args.pose_dir)))
-    pose_hash = islutils.getBaseName(pose_pickle)
+    if args.pose_hash is None :
+        # if pose_hash is not provided, pick a random pose from the pose directory
+        pose_pickle = random.choice(list(islutils.allfiles(args.pose_dir)))
+        pose_hash = islutils.getBaseName(pose_pickle)
+    else :
+        pose_hash = args.pose_hash
+        pose_pickle = osp.join(args.pose_dir, f'{pose_hash}.pkl')
+
     metadata = islutils.get_metadata_by_hash(args.metadata_file, pose_hash)
     width, height = metadata['width'], metadata['height']
 
@@ -44,11 +53,12 @@ if __name__ == "__main__" :
         image = np.ones((height, width, 3))
         landmark_list = Wrapper(dict(landmark=[Wrapper(_) for _ in pose_sequence[i]['landmarks']]))
             
-        # Draw the pose annotation on the image.
-        cv2.line(image, (minx, miny), (maxx, miny), (0,255,0),1)
-        cv2.line(image, (minx, miny), (minx, maxy), (0,255,0),1)
-        cv2.line(image, (minx, maxy), (maxx, maxy), (0,255,0),1)
-        cv2.line(image, (maxx, miny), (maxx, maxy), (0,255,0),1)
+        if args.vis_bounds :
+            # Draw bounds on the pose sequence
+            cv2.line(image, (minx, miny), (maxx, miny), (0,255,0),1)
+            cv2.line(image, (minx, miny), (minx, maxy), (0,255,0),1)
+            cv2.line(image, (minx, maxy), (maxx, maxy), (0,255,0),1)
+            cv2.line(image, (maxx, miny), (maxx, maxy), (0,255,0),1)
 
         mp_drawing.draw_landmarks(
                 image,
@@ -57,7 +67,7 @@ if __name__ == "__main__" :
                 landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
         cv2.imshow(f'Pose | {pose_hash}', islutils.aspectRatioPreservingResize(image, 512))
 
-         # Break loop if 'q' is pressed
+         # reak loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
              break
  

@@ -1,64 +1,10 @@
 import argparse
-from tqdm import tqdm
-import multiprocessing as mp
 import os
 import urllib.request
 import zipfile
-from functools import wraps
-import hashlib
+from isl_utils import skip_if_processed, pmap
 
 output_dir = None
-
-def skip_if_processed(task_file="/tmp/completed_tasks.txt"):
-    """
-    Decorator to skip function execution if it has been previously processed.
-
-    This is useful in data processing if program crashes and you want to restart
-    without doing everything all over again.
-    """
-
-    # Initialize a set to hold completed task hashes
-    completed_task_hashes = set()
-
-    # Load completed task hashes from file
-    if os.path.exists(task_file):
-        with open(task_file, "r") as f:
-            completed_task_hashes = set(line.strip() for line in f.readlines())
-
-    def compute_hash(args):
-        """Compute SHA-256 hash for the given arguments."""
-        args_str = str(args)
-        return hashlib.sha256(args_str.encode()).hexdigest()
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            task_hash = compute_hash(args)
-
-            # If the task is not yet completed, run it and mark as completed
-            if task_hash not in completed_task_hashes:
-                result = func(*args, **kwargs)
-
-                # Update completed task hashes and save to file
-                completed_task_hashes.add(task_hash)
-                with open(task_file, "a") as f:
-                    f.write(f"{task_hash}\n")
-
-                return result
-            else:
-                print(f"Task with hash {task_hash} has already been processed, skipping.")
-        return wrapper
-    return decorator
-
-def pmap(function, items, chunksize=None) :
-    """ parallel mapper using Pool with progress bar """
-    cpu_count = mp.cpu_count()
-    if chunksize is None :
-        chunksize = len(items) // (cpu_count * 5)
-    chunksize = max(1, chunksize)
-    with mp.Pool(cpu_count) as p :
-        mapper = p.imap(function, items, chunksize=chunksize)
-        return list(tqdm(mapper, total=len(items)))
 
 @skip_if_processed()
 def download_and_extract_zip(url):

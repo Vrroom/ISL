@@ -5,7 +5,6 @@ import json
 import argparse
 import isl_utils as islutils
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Delete long videos')
     parser.add_argument('--video_dir', type=str, help='Directory containing videos')
