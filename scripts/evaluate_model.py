@@ -42,18 +42,40 @@ def load_pose (pose_pickle):
     metadata = islutils.get_metadata_by_hash(args.metadata_file, pose_hash)
     return pose_sequence, metadata
 
-def get_probs (model, data) : 
-    logits, _ = model(data) # N examples by 2 array 
+def get_probs (model, data) :
+    logits, _ = model(data)  # N examples by 2 array
+
+    # Example:
+    # Let's assume logits = torch.Tensor([[1, 1], [-1, 1], [0, 0]])
+    # After applying exp(), x will be:
+    # [[e^1,  e^1],    <- logits for [rest pose, non rest pose]
+    #  [e^-1, e^1],    <- logits for [rest pose, non rest pose]
+    #  [e^0,  e^0]]    <- logits for [rest pose, non rest pose]
+    #
+    # x becomes:
+    # [[2.7183, 2.7183],
+    #  [0.3679, 2.7183],
+    #  [1.0000, 1.0000]]
+    #
+    # After summing each row and dividing, probs becomes:
+    # [[0.5,    0.5],    <- probabilities for [rest pose, non rest pose]
+    #  [0.1192, 0.8808], <- probabilities for [rest pose, non rest pose]
+    #  [0.5,    0.5]]    <- probabilities for [rest pose, non rest pose]
+    #
+    # Now each row in probs sums to 1 and all values are between 0 and 1
+
     # logits are raw numbers that the neural network outputs. These can be positive or negative.
     # We want to interpret these as probabilities. Probabilities, like percentages, have the property
     # that they are positive and for each example, they should sum to 1.
-    # 
-    # A simple way to make numbers are positive is to exponentiate them. e^x is always positive for all x
+    #
+    # A simple way to make numbers positive is to exponentiate them. e^x is always positive for all x
     x = torch.exp(logits)
+
     # Now to make sure that each row sums to 1, we'll divide by the total sum of each row
-    probs = x / torch.sum(x, 1, keepdim=True) # here 1 means sum across rows. 0 would mean sum across columns (which we don't want to do because ...
+    probs = x / torch.sum(x, 1, keepdim=True)  # here 1 means sum across rows. 0 would mean sum across columns (which we don't want to do because ...
     # ... entries in a column come from different examples)
     return probs
+
 
 if __name__ == "__main__" : 
     parser = argparse.ArgumentParser(description="Evaluate model on a pose_sequence.")
