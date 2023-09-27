@@ -4,6 +4,8 @@ from rest_pose_dataset import *
 import torch
 import isl_utils as islutils
 import pickle
+import numpy as np
+
 
 def load_model (model_path) : 
     """ 
