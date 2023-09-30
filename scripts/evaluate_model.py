@@ -35,14 +35,7 @@ def load_model (model_path) :
     model.eval()
     return model
 
-def load_pose (pose_pickle): 
-    # pick some random file
-    pose_hash = islutils.getBaseName(pose_pickle)
-    with open(pose_pickle, 'rb') as fp : 
-        pose_sequence = pickle.load(fp)
-    metadata = islutils.get_metadata_by_hash(args.metadata_file, pose_hash)
-    return pose_sequence, metadata
-
+@torch.no_grad()
 def get_probs (model, data) :
     logits, _ = model(data)  # N examples by 2 array
 
@@ -77,45 +70,49 @@ def get_probs (model, data) :
     # ... entries in a column come from different examples)
     return probs
 
-def precision(model, x, y, threshold) :
+def precision(model, x, y, threshold, p=None) :
     """ Precision is the fraction of true positives among all predicted positives """
-    p = get_probs(model, x)[:, 0]
+    if p is None:
+        p = get_probs(model, x)[:, 1]
     pred = p >= threshold
     return ((pred == 1) & (y == 1)).sum() / pred.sum()
 
-def recall(model, x, y, threshold) : 
+def recall(model, x, y, threshold, p=None) : 
     """ Recall is the fraction of true positives among all actual positives """
-    p = get_probs(model, x)[:, 0]
+    if p is None:
+        p = get_probs(model, x)[:, 1]
     pred = p >= threshold
     return ((pred == 1) & (y == 1)).sum() / y.sum()
 
-def fpr (model, x, y, threshold) : 
-    """ False positive rate is the fraction of false positive among all actual negatives """
-    p = get_probs(model, x)[:, 0]
-    pred = p >= threshold
-    return ((pred == 1) & (y == 0)).sum() / (y == 0).sum()
-
-def roc (model, x, y) : 
+def precision_recall (model, x, y) : 
     thresholds = np.linspace(0, 1, 10)
-    fprs, recalls = [], []
+    precisions, recalls = [], []
+    probs = get_probs(model, x)[:, 1]
     for t in thresholds: 
-        fprs.append(fpr(model, x, y, t))
-        recalls.append(recall(model, x, y, t))
-    plt.scatter(fprs, recalls)
+        precisions.append(precision(model, x, y, t, p=probs))
+        recalls.append(recall(model, x, y, t, p=probs))
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.xlim(0, 1.1)
+    plt.ylim(0, 1.1)
+    plt.scatter(recalls, precisions, label='Precision v Recall')
+    plt.legend()
     plt.show()
 
 if __name__ == "__main__" : 
-    parser = argparse.ArgumentParser(description="Evaluate model on a pose_sequence.")
-    parser.add_argument('--model-checkpoint', required=True, type=str, help="Path to the model checkpoint.")
-    # parser.add_argument('--pose-file', required=True, type=str, help="Path to the pose file.")
+    parser = argparse.ArgumentParser(description="Evaluate rest pose classification model on a pose sequence.")
+    parser.add_argument('--model_checkpoint', required=True, type=str, help="Path to the model checkpoint.")
+    parser.add_argument('--pose_dir', required=True, type=str, help="Path to the pose file.")
+    parser.add_argument('--metadata_file', required=True, type=str, help="Metadata file path.")
+    parser.add_argument('--rest_pose_data_dir', default='../rest_pose_dataset/', type=str, help="Directory containing dataset")
     args = parser.parse_args()
 
     # load model, you can download the trained parameters from (https://github.com/Vrroom/ISL/releases/download/rest-pose-ckpt/ckpt.pt)
     model = load_model(args.model_checkpoint)
 
-    # Here, I'm demonstrating model use. I'm using the training dataset that I created using your normalization code.
-    rp  = torch.from_numpy(np.load('../rest_pose_dataset/rest_poses.npy')).float()[9000:]
-    nrp = torch.from_numpy(np.load('../rest_pose_dataset/non_rest_poses.npy')).float()[9000:]
+    # Here, I'm demonstrating model use. I'm using the validation split (hard coded).
+    rp  = torch.from_numpy(np.load(f'{args.rest_pose_data_dir}/rest_poses.npy')).float()[9000:]
+    nrp = torch.from_numpy(np.load(f'{args.rest_pose_data_dir}/non_rest_poses.npy')).float()[9000:]
     x = torch.cat((rp, nrp), 0)
     y = torch.tensor([1] * 1000 + [0] * 1000)
     # Here we have N = 2000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
@@ -123,18 +120,41 @@ if __name__ == "__main__" :
     # For a 2D array - [[1, 2], [3, 4, 5], [6, 7]], this operation would convert it into a 1D array - [1, 2, 3, 4, 5, 6, 7]
     N, L, P, D = x.shape 
     x = x.reshape(N, L, P * D) # this does the above "flattening operation" for all x[i][j], 0 <= i < N, 0 <= j < L
-    print(x.shape)
     probs = get_probs(model, x) # check out the logic in the get_probs function. I have tried to add details
-    print(probs.shape) 
-    roc(model, x, y)
-    
-    # load pose sequence pickle file (load_pose)
-    # ... 
-    # normalize pose sequence (normalize_pose_sequence imported from rest_pose_dataset)
 
-    # Let N be sequence length
-    # start from i = 2, i = N - 3
-    # pick a set of 5 frames centered at i. Two on left and two on right.
-    # get the probability of rest pose for these 5 frames.
-    # append it to a list
-    # plot probability as a function of i.
+    # Plot precision v recall at various thresholds.
+    precision_recall(model, x, y)
+    
+    all_pose_files = list(islutils.allfiles(args.pose_dir))
+    print(f"Total files to process: {str(len(all_pose_files))}")
+
+    pose_probs = {}
+    for count, pose_file in enumerate(all_pose_files) :  
+        pose_seq, pose_meta = islutils.load_pose(pose_file, args.metadata_file)
+
+        width, height = pose_meta['width'], pose_meta['height']
+        n_pose_sequence = islutils.normalize_pose_sequence(pose_seq, width, height)
+
+        # build a list that can be passed to get_probs
+        frames = []
+        seqLength = len(n_pose_sequence)
+        for index in range (seqLength-4) :
+            # Here we are sliding a window of length 5 over the input pose sequence and extracting them for prediction
+            frames.append([])
+            for i in range(5) :
+                xy_data = [[pt['x'], pt['y']] for pt in n_pose_sequence[i+index]['landmarks']]
+                frames[-1].append(xy_data)
+
+        x = torch.tensor(frames)
+        N, L, P, D = x.shape 
+        x = x.reshape(N, L, P * D) 
+
+        probs = get_probs(model, x)
+        pose_probs[pose_file] = probs # maybe problems here of deep copy. 
+
+        t = np.array(list(range(seqLength - 4))) / pose_meta['framerate']
+        rest_pose_prob = probs[:, 1].detach().numpy()
+
+        plt.plot(t, rest_pose_prob, label='Rest pose probability v time')
+        plt.legend()
+        plt.show()
