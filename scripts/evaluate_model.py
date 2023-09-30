@@ -4,6 +4,7 @@ from rest_pose_dataset import *
 import torch
 import isl_utils as islutils
 import pickle
+import matplotlib.pyplot as plt
 
 def load_model (model_path) : 
     """ 
@@ -76,6 +77,32 @@ def get_probs (model, data) :
     # ... entries in a column come from different examples)
     return probs
 
+def precision(model, x, y, threshold) :
+    """ Precision is the fraction of true positives among all predicted positives """
+    p = get_probs(model, x)[:, 0]
+    pred = p >= threshold
+    return ((pred == 1) & (y == 1)).sum() / pred.sum()
+
+def recall(model, x, y, threshold) : 
+    """ Recall is the fraction of true positives among all actual positives """
+    p = get_probs(model, x)[:, 0]
+    pred = p >= threshold
+    return ((pred == 1) & (y == 1)).sum() / y.sum()
+
+def fpr (model, x, y, threshold) : 
+    """ False positive rate is the fraction of false positive among all actual negatives """
+    p = get_probs(model, x)[:, 0]
+    pred = p >= threshold
+    return ((pred == 1) & (y == 0)).sum() / (y == 0).sum()
+
+def roc (model, x, y) : 
+    thresholds = np.linspace(0, 1, 10)
+    fprs, recalls = [], []
+    for t in thresholds: 
+        fprs.append(fpr(model, x, y, t))
+        recalls.append(recall(model, x, y, t))
+    plt.scatter(fprs, recalls)
+    plt.show()
 
 if __name__ == "__main__" : 
     parser = argparse.ArgumentParser(description="Evaluate model on a pose_sequence.")
@@ -87,8 +114,11 @@ if __name__ == "__main__" :
     model = load_model(args.model_checkpoint)
 
     # Here, I'm demonstrating model use. I'm using the training dataset that I created using your normalization code.
-    x = torch.from_numpy(np.load('../rest_pose_dataset/rest_poses.npy')).float()[:1000]
-    # Here we have N = 1000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
+    rp  = torch.from_numpy(np.load('../rest_pose_dataset/rest_poses.npy')).float()[9000:]
+    nrp = torch.from_numpy(np.load('../rest_pose_dataset/non_rest_poses.npy')).float()[9000:]
+    x = torch.cat((rp, nrp), 0)
+    y = torch.tensor([1] * 1000 + [0] * 1000)
+    # Here we have N = 2000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
     # dimensions. Thus, it is a 4 dimensional array. Before doing prediction, we'll "flatten" the last 2 dimensions.
     # For a 2D array - [[1, 2], [3, 4, 5], [6, 7]], this operation would convert it into a 1D array - [1, 2, 3, 4, 5, 6, 7]
     N, L, P, D = x.shape 
@@ -96,6 +126,7 @@ if __name__ == "__main__" :
     print(x.shape)
     probs = get_probs(model, x) # check out the logic in the get_probs function. I have tried to add details
     print(probs.shape) 
+    roc(model, x, y)
     
     # load pose sequence pickle file (load_pose)
     # ... 
