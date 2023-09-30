@@ -9,6 +9,7 @@ import pdb
 import matplotlib.pyplot as plt
 
 
+
 def load_model (model_path) : 
     """ 
     Helper method to load our classifier
@@ -101,44 +102,50 @@ if __name__ == "__main__" :
     # For a 2D array - [[1, 2], [3, 4, 5], [6, 7]], this operation would convert it into a 1D array - [1, 2, 3, 4, 5, 6, 7]
     N, L, P, D = x.shape 
     x = x.reshape(N, L, P * D) # this does the above "flattening operation" for all x[i][j], 0 <= i < N, 0 <= j < L
-    print(x.shape)
     probs = get_probs(model, x) # check out the logic in the get_probs function. I have tried to add details
-    print(probs.shape) 
     
     # load pose sequence pickle file (load_pose)
     all_pose_files = list(islutils.allfiles(args.pose_dir))
+    print(f"total files to process: " + str(len(all_pose_files)))
 
-#    pose_seq, pose_meta = islutils.load_random_pose(all_pose_files, args.metadata_file)
-    
-    pose_file = "../small/b172e82efacbcd937b86ef80b350a475.pkl"
-    pose_seq, pose_meta = islutils.load_pose(pose_file, args.metadata_file)
+    pose_probs = {}
+    count = 0
+    for pose_file in all_pose_files :  
+        count = count + 1
+        pose_seq, pose_meta = islutils.load_pose(pose_file, args.metadata_file)
 
-    width, height = pose_meta['width'], pose_meta['height']
-    n_pose_sequence = islutils.normalize_pose_sequence(pose_seq, width, height)
-    #build a list that can be passed to get_probs
+        width, height = pose_meta['width'], pose_meta['height']
+        n_pose_sequence = islutils.normalize_pose_sequence(pose_seq, width, height)
+        #build a list that can be passed to get_probs
 
-    frames = []
-        
-    seqLength = len(n_pose_sequence)
-    print(seqLength)
-    for index in range (seqLength-4) :
-        frames.append([])
-        for i in range(5) :
-            xy_data = [[pt['x'], pt['y']] for pt in n_pose_sequence[i+index]['landmarks']]
-            frames[-1].append(xy_data)
+        frames = []
+            
+        seqLength = len(n_pose_sequence)
+        print(seqLength)
+        for index in range (seqLength-4) :
+            frames.append([])
+            for i in range(5) :
+                xy_data = [[pt['x'], pt['y']] for pt in n_pose_sequence[i+index]['landmarks']]
+                frames[-1].append(xy_data)
 
-    tense =  torch.tensor(frames)
-    print (tense.shape)
+        tense =  torch.tensor(frames)
+        print (tense.shape)
 
-    N, L, P, D = tense.shape 
-    tense = tense.reshape(N, L, P * D) 
+        N, L, P, D = tense.shape 
+        tense = tense.reshape(N, L, P * D) 
 
-    probs = get_probs(model,tense)
-    xvalues = list(range(seqLength-4))
-    xvalues = [xvalue/30 for xvalue in xvalues]
+        probs = get_probs(model,tense)
+        pose_probs[pose_file] = probs # maybe problems here of deep copy. 
 
-    plt.plot(xvalues, probs[:,0].detach().numpy())
-    plt.show()
+        xvalues = list(range(seqLength-4))
+        xvalues = [xvalue/30 for xvalue in xvalues]
+        if (count == 10) :
+            break
+
+    islutils.writeCSV("probs.csv", pose_probs)
+
+#    plt.plot(xvalues, probs[:,0].detach().numpy())
+#    plt.show()
 
     #pdb.set_trace()
 

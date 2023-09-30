@@ -14,7 +14,14 @@ from copy import deepcopy
 import math
 import random
 import pickle
+import csv
 
+
+def writeCSV(fname, dict) :
+    with open(fname, 'w', newline='') as f:
+        writer = csv.writer(f)
+        for key, value in dict.items():
+            writer.writerow([key, value])
 
 def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, image_height) :
     """
