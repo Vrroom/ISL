@@ -47,7 +47,7 @@ if __name__ == "__main__" :
     for i in tqdm(range(args.class_size)) : 
         while True: 
             try:
-                pose_sequence, metadata = load_random_pose(all_pose_files)
+                pose_sequence, metadata = islutils.load_random_pose(all_pose_files, args.metadata_file)
                 width, height = metadata['width'], metadata['height']
                 # sample a sequence, somewhere in the middle.
                 st = random.randint(args.seq_len, len(pose_sequence) - 2 * args.seq_len)

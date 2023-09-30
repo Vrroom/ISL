@@ -12,6 +12,9 @@ import shapely.affinity as sa
 from functools import wraps
 from copy import deepcopy
 import math
+import random
+import pickle
+
 
 def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, image_height) :
     """
@@ -78,6 +81,23 @@ def allfiles (directory) :
 
 def getBaseName(fullName) :
     return osp.splitext(osp.split(fullName)[1])[0]
+
+def load_random_pose (file_list, metadata_file): 
+    # pick some random file
+    pose_pickle = random.choice(file_list)
+    pose_hash = getBaseName(pose_pickle)
+    with open(pose_pickle, 'rb') as fp : 
+        pose_sequence = pickle.load(fp)
+    metadata = get_metadata_by_hash(metadata_file, pose_hash)
+    return pose_sequence, metadata
+
+def load_pose (pose_pickle, metadata_file): 
+    pose_hash = getBaseName(pose_pickle)
+    with open(pose_pickle, 'rb') as fp : 
+        pose_sequence = pickle.load(fp)
+    metadata = get_metadata_by_hash(metadata_file, pose_hash)
+    return pose_sequence, metadata
+
 
 def get_metadata_by_hash(file_path, target_hash):
     df = pd.read_csv(file_path)

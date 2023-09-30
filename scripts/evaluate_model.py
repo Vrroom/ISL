@@ -4,7 +4,9 @@ from rest_pose_dataset import *
 import torch
 import isl_utils as islutils
 import pickle
-import numpy as np
+# import numpy as np
+import pdb
+import matplotlib.pyplot as plt
 
 
 def load_model (model_path) : 
@@ -81,14 +83,18 @@ def get_probs (model, data) :
 
 if __name__ == "__main__" : 
     parser = argparse.ArgumentParser(description="Evaluate model on a pose_sequence.")
-    parser.add_argument('--model-checkpoint', required=True, type=str, help="Path to the model checkpoint.")
-    # parser.add_argument('--pose-file', required=True, type=str, help="Path to the pose file.")
+    parser.add_argument('--model_checkpoint', required=True, type=str, help="Path to the model checkpoint.")
+    parser.add_argument('--pose_dir', required=True, type=str, help="Path to the pose file.")
+    parser.add_argument('--metadata_file', required=True, type=str, help="Metadata file path.")
     args = parser.parse_args()
 
     # load model, you can download the trained parameters from (https://github.com/Vrroom/ISL/releases/download/rest-pose-ckpt/ckpt.pt)
     model = load_model(args.model_checkpoint)
 
     # Here, I'm demonstrating model use. I'm using the training dataset that I created using your normalization code.
+    
+    # pdb.set_trace()
+
     x = torch.from_numpy(np.load('../rest_pose_dataset/rest_poses.npy')).float()[:1000]
     # Here we have N = 1000 sequences of L = 5 poses each. Each pose has P = 33 key points and each key point is defined by D = 2
     # dimensions. Thus, it is a 4 dimensional array. Before doing prediction, we'll "flatten" the last 2 dimensions.
@@ -100,7 +106,44 @@ if __name__ == "__main__" :
     print(probs.shape) 
     
     # load pose sequence pickle file (load_pose)
-    # ... 
+    all_pose_files = list(islutils.allfiles(args.pose_dir))
+
+#    pose_seq, pose_meta = islutils.load_random_pose(all_pose_files, args.metadata_file)
+    
+    pose_file = "../small/b172e82efacbcd937b86ef80b350a475.pkl"
+    pose_seq, pose_meta = islutils.load_pose(pose_file, args.metadata_file)
+
+    width, height = pose_meta['width'], pose_meta['height']
+    n_pose_sequence = islutils.normalize_pose_sequence(pose_seq, width, height)
+    #build a list that can be passed to get_probs
+
+    frames = []
+        
+    seqLength = len(n_pose_sequence)
+    print(seqLength)
+    for index in range (seqLength-4) :
+        frames.append([])
+        for i in range(5) :
+            xy_data = [[pt['x'], pt['y']] for pt in n_pose_sequence[i+index]['landmarks']]
+            frames[-1].append(xy_data)
+
+    tense =  torch.tensor(frames)
+    print (tense.shape)
+
+    N, L, P, D = tense.shape 
+    tense = tense.reshape(N, L, P * D) 
+
+    probs = get_probs(model,tense)
+    xvalues = list(range(seqLength-4))
+    xvalues = [xvalue/30 for xvalue in xvalues]
+
+    plt.plot(xvalues, probs[:,0].detach().numpy())
+    plt.show()
+
+    #pdb.set_trace()
+
+
+
     # normalize pose sequence (normalize_pose_sequence imported from rest_pose_dataset)
 
     # Let N be sequence length
