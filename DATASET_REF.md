@@ -7,3 +7,4 @@
 5. https://www.robots.ox.ac.uk/~vgg/data/bobsl/
 6. https://github.com/YAYAYru/sign-lanuage-datasets
 7. https://www.microsoft.com/en-us/research/project/asl-citizen/dataset-description/
+8. https://www.bu.edu/asllrp/av/dai-asllvd.html
