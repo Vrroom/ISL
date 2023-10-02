@@ -28,5 +28,6 @@ Video content producers including TV content producers could benefit by having a
 Online teaching medium could use the tech in the similar manner as above.
 One could question whether the above use case is a valid use case or not, and whether the above problem is already solved by automatic transcription of the conversation. It is to be seen whether the ISL translation makes for a better immersive experience than the running closed caption text.
 
- 
+## References
 
+1. https://github.com/jackyjsy/awesome-sign-language-recognition
