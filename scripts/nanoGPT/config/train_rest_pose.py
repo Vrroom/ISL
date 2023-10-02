@@ -23,9 +23,9 @@ block_size = 5 # We take 5 poses at a time. Kind of stupid. Maybe should use MLP
 in_dim = 2 * 33 # x, y for 33 key-points
 
 # baby GPT model :)
-n_layer = 6
-n_head = 6
-n_embd = 384
+n_layer = 4
+n_head = 4
+n_embd = 96
 dropout = 0.2
 
 learning_rate = 1e-3 # with baby networks can afford to go a bit higher

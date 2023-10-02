@@ -16,11 +16,24 @@ import random
 import pickle
 import csv
 
+""" Definition of some file/directory paths that are used over and over again """
+ROOT = "../"
+POSE_DIR = osp.join(ROOT, "poses")
+VIDEO_DIR = osp.join(ROOT, "videos")
+VIDEO_METADATA = osp.join(ROOT, "metadata/video_metadata.csv")
+VIDEO_HASH_METADATA = osp.join(ROOT, "metadata/video_hashes.csv")
+""" end """
+
 def writeCSV(fname, dict) :
+    """ Write dictionary as csv to a file """
     with open(fname, 'w', newline='') as f:
         writer = csv.writer(f)
         for key, value in dict.items():
-            writer.writerow([key, value])
+            if isinstance(value, list) : 
+                # spread the list
+                writer.writerow([key, *value])
+            else:
+                writer.writerow([key, value])
 
 def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, image_height) :
     """
@@ -88,26 +101,31 @@ def allfiles (directory) :
 def getBaseName(fullName) :
     return osp.splitext(osp.split(fullName)[1])[0]
 
-def load_random_pose (file_list, metadata_file): 
+def load_random_pose (file_list): 
     # pick some random file
     pose_pickle = random.choice(file_list)
     pose_hash = getBaseName(pose_pickle)
     with open(pose_pickle, 'rb') as fp : 
         pose_sequence = pickle.load(fp)
-    metadata = get_metadata_by_hash(metadata_file, pose_hash)
+    metadata = get_metadata_by_hash(pose_hash)
     return pose_sequence, metadata
 
-def load_pose (pose_pickle, metadata_file): 
+def load_pose (pose_pickle): 
     pose_hash = getBaseName(pose_pickle)
     with open(pose_pickle, 'rb') as fp : 
         pose_sequence = pickle.load(fp)
-    metadata = get_metadata_by_hash(metadata_file, pose_hash)
+    metadata = get_metadata_by_hash(pose_hash)
     return pose_sequence, metadata
 
-def get_metadata_by_hash(file_path, target_hash):
-    df = pd.read_csv(file_path)
+def get_metadata_by_hash(target_hash):
+    df = pd.read_csv(VIDEO_METADATA)
     row = df[df['hash'] == target_hash]
     return row.iloc[0].to_dict() if not row.empty else None
+
+def get_video_path_by_hash (target_hash):
+    df = pd.read_csv(VIDEO_HASH_METADATA)
+    hash_to_path = dict(zip(df['hash'], df['path']))
+    return hash_to_path[target_hash]
 
 def imgArrayToPIL (arr) :
     """ utility to convert img array to PIL """

@@ -9,7 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Delete long videos')
     parser.add_argument('--video_dir', type=str, help='Directory containing videos')
     parser.add_argument('--json_dir', type=str, help='Directory containing jsons')
-    parser.add_argument('--video_links_file', type=str, help='<fill in here>')
+    parser.add_argument('--video_links_file', type=str, help='File containing video links')
     parser.add_argument('--dataset_name', type=str, help='Name of the dataset')
     args = parser.parse_args()
     

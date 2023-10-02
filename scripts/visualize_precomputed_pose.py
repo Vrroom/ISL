@@ -19,8 +19,7 @@ mp_pose = mp.solutions.pose
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description='Visualize poses')
-    parser.add_argument('--pose_dir', type=str, required=True, help='Directory containing pose sequences')
-    parser.add_argument('--metadata_file', type=str, required=True, help='File containing metadata')
+    parser.add_argument('--pose_dir', type=str, default=islutils.POSE_DIR, help='Directory containing pose sequences')
     parser.add_argument('--pose_hash', default=None, type=str, help='(Optional) Hash of the pose sequence')
     parser.add_argument('--vis_bounds', action='store_true', default=False, help='(Optional) Visualize bounds of the pose sequence')
     parser.add_argument('--normalize', action='store_true', default=False, help='(Optional) Normalize the pose in a [-1, 1] by [-1, 1] box. Uses matplotlib for visualizing. Incompatible with some other options')
@@ -35,7 +34,7 @@ if __name__ == "__main__" :
         pose_hash = args.pose_hash
         pose_pickle = osp.join(args.pose_dir, f'{pose_hash}.pkl')
 
-    metadata = islutils.get_metadata_by_hash(args.metadata_file, pose_hash)
+    metadata = islutils.get_metadata_by_hash(pose_hash)
     width, height = metadata['width'], metadata['height']
 
     with open(pose_pickle, 'rb') as fp : 
@@ -56,11 +55,12 @@ if __name__ == "__main__" :
             x_data = [n_pose_sequence[frame]['landmarks'][j]['x'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
             y_data = [n_pose_sequence[frame]['landmarks'][j]['y'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
             scatter.set_offsets(list(zip(x_data, y_data)))
+            print(frame)
             return scatter,
 
         print('Pose hash ...', pose_hash)
         print('Pose length ...', len(n_pose_sequence))
-        ani = FuncAnimation(fig, update, frames=range(len(n_pose_sequence)), init_func=init, blit=True)
+        ani = FuncAnimation(fig, update, frames=range(len(n_pose_sequence)), init_func=init, blit=True, repeat=False)
         plt.show()
 
     else:
