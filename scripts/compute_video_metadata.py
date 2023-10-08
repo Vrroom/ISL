@@ -3,6 +3,9 @@ import csv
 import argparse
 from tqdm import tqdm
 from scenedetect import detect, AdaptiveDetector, split_video_ffmpeg
+import pandas as pd
+import os
+import os.path as osp
 
 def get_video_info(video_path):
     scene_cuts = len(detect(video_path, AdaptiveDetector()))
@@ -16,16 +19,23 @@ def get_video_info(video_path):
     return fps, duration, width, height, scene_cuts
 
 def main(input_csv, output_csv):
-    with open(input_csv, 'r') as infile, open(output_csv, 'w', newline='') as outfile:
+    done_hashes = set()
+    if osp.exists(output_csv):
+        df = pd.read_csv(output_csv)
+        done_hashes = set(df['hash'])
+    print('Already seen items:', len(done_hashes))
+    with open(input_csv, 'r') as infile, open(output_csv, 'a+', newline='') as outfile:
         csv_reader = csv.DictReader(infile)
         fieldnames = ['hash', 'framerate', 'duration', 'width', 'height', 'scene_cuts']
         csv_writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-        csv_writer.writeheader()
-
+        if len(done_hashes) == 0 :
+            csv_writer.writeheader()
         for row in tqdm(csv_reader):
             try :
                 video_path = row['path']
                 video_hash = row['hash']
+                if video_hash in done_hashes:
+                    continue
                 fps, duration, width, height, scene_cuts = get_video_info(video_path)
                 csv_writer.writerow({
                     'hash': video_hash, 

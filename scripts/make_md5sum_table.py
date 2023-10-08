@@ -6,7 +6,7 @@ import isl_utils as islutil
 
 @islutil.skip_if_processed()
 def calculate_md5(file_path):
-    try : 
+    try: 
         hash_md5 = hashlib.md5()
         with open(file_path, "rb") as f:
             hash_md5.update(f.read())
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--table_path', required=True, help='Path of the table')
     args = parser.parse_args()
 
-    video_files = list(islutil.allfiles(args.video_dir))
+    video_files = list(islutil.allFiles(args.video_dir))
     md5sums = list(islutil.pmap(calculate_md5, video_files))
 
     # remove the files which couldn't be computed
@@ -28,4 +28,5 @@ if __name__ == '__main__':
     md5sums = [md5 for md5 in md5sums if md5 is not None]
 
     with open(args.table_path, 'w+') as fp : 
+        fp.write('path,hash\n')
         fp.write('\n'.join([f'{a},{b}' for a, b in zip(video_files, md5sums)]))

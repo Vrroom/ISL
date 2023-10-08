@@ -15,6 +15,8 @@ import math
 import random
 import pickle
 import csv
+import cv2
+from functools import lru_cache
 
 """ Definition of some file/directory paths that are used over and over again """
 ROOT = "../"
@@ -23,6 +25,19 @@ VIDEO_DIR = osp.join(ROOT, "videos")
 VIDEO_METADATA = osp.join(ROOT, "metadata/video_metadata.csv")
 VIDEO_HASH_METADATA = osp.join(ROOT, "metadata/video_hashes.csv")
 """ end """
+
+def allFiles (directory) :
+    """ List all files that are not directories in this directory """
+    return filter(lambda x : not osp.isdir(x), allfiles(directory))
+
+@lru_cache
+def cached_read_csv(file_name) : 
+    return pd.read_csv(file_name)
+
+@lru_cache
+def cached_read_csv_as_dict(file_name, k, v) : 
+    df = pd.read_csv(file_name)
+    return dict(zip(df[k], df[v]))
 
 def writeCSV(fname, dict) :
     """ Write dictionary as csv to a file """
@@ -34,6 +49,38 @@ def writeCSV(fname, dict) :
                 writer.writerow([key, *value])
             else:
                 writer.writerow([key, value])
+
+def split_video(input_path, output_path1, output_path2, split_frame):
+    """ 
+    Splits an input video into two videos. 
+
+    The first video has frames [0, split_frame) and the other has the rest
+    """
+    cap = cv2.VideoCapture(input_path)
+    video_format = 'mp4v' if 'webm' not in output_path1 else 'VP80'
+    fourcc = cv2.VideoWriter_fourcc(*video_format)
+    
+    # video metadata ...
+    frame_width = int(cap.get(3))
+    frame_height = int(cap.get(4))
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+    out1 = cv2.VideoWriter(output_path1, fourcc, fps, (frame_width, frame_height))
+    out2 = cv2.VideoWriter(output_path2, fourcc, fps, (frame_width, frame_height))
+
+    frame_count = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        stream = out1 if frame_count < split_frame else out2
+        stream.write(frame)
+        frame_count += 1
+
+    cap.release()
+    out1.release()
+    out2.release()
+    cv2.destroyAllWindows()
 
 def normalized_to_pixel_coordinates(normalized_x, normalized_y, image_width, image_height) :
     """
@@ -118,14 +165,13 @@ def load_pose (pose_pickle):
     return pose_sequence, metadata
 
 def get_metadata_by_hash(target_hash):
-    df = pd.read_csv(VIDEO_METADATA)
+    df = cached_read_csv(VIDEO_METADATA)
     row = df[df['hash'] == target_hash]
     return row.iloc[0].to_dict() if not row.empty else None
 
 def get_video_path_by_hash (target_hash):
-    df = pd.read_csv(VIDEO_HASH_METADATA)
-    hash_to_path = dict(zip(df['hash'], df['path']))
-    return hash_to_path[target_hash]
+    hash_to_path = cached_read_csv_as_dict(VIDEO_HASH_METADATA, 'hash', 'path')
+    return osp.join(ROOT, hash_to_path[target_hash])
 
 def imgArrayToPIL (arr) :
     """ utility to convert img array to PIL """
@@ -201,7 +247,7 @@ def pmap(function, items, chunksize=None) :
     chunksize = max(1, chunksize)
     with mp.Pool(cpu_count) as p :
         mapper = p.imap(function, items, chunksize=chunksize)
-        return list(tqdm(mapper, total=len(items)))
+        return list(tqdm.tqdm(mapper, total=len(items)))
 
 class Wrapper :
     """ 
