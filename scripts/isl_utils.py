@@ -26,6 +26,9 @@ VIDEO_METADATA = osp.join(ROOT, "metadata/video_metadata.csv")
 VIDEO_HASH_METADATA = osp.join(ROOT, "metadata/video_hashes.csv")
 """ end """
 
+def implies(a, b) :
+    return not a or b
+
 def allFiles (directory) :
     """ List all files that are not directories in this directory """
     return filter(lambda x : not osp.isdir(x), allfiles(directory))
@@ -164,7 +167,6 @@ def load_pose2 (pose_pickle, metadata_file):
     metadata = get_metadata_by_hash2(metadata_file, pose_hash)
     return pose_sequence, metadata
 
-
 def load_pose (pose_pickle): 
     pose_hash = getBaseName(pose_pickle)
     with open(pose_pickle, 'rb') as fp : 
@@ -176,7 +178,6 @@ def get_metadata_by_hash2(file_path, target_hash):
     df = pd.read_csv(file_path)
     row = df[df['hash'] == target_hash]
     return row.iloc[0].to_dict() if not row.empty else None
-
 
 def get_metadata_by_hash(target_hash):
     df = cached_read_csv(VIDEO_METADATA)

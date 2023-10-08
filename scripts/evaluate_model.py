@@ -1,83 +1,3 @@
-from nanoGPT.model import GPT, GPTConfig
-import argparse
-from rest_pose_dataset import *
-import torch
-import isl_utils as islutils
-import pickle
-import numpy as np
-import pdb
-import matplotlib
-import matplotlib.pyplot as plt
-import cv2
-import os
-from matplotlib.animation import FuncAnimation
-
-
-def load_model (model_path) : 
-    """ 
-    Helper method to load our classifier
-    """
-    print(f"Loading model from {model_path}")
-    # resume training from a checkpoint.
-    checkpoint = torch.load(model_path, map_location='cpu')
-    checkpoint_model_args = checkpoint['model_args']
-    # force these config attributes to be equal otherwise we can't even resume training
-    # the rest of the attributes (e.g. dropout) can stay as desired from command line
-    model_args = {}
-    for k in ['n_layer', 'n_head', 'n_embd', 'block_size', 'bias', 'vocab_size']:
-        model_args[k] = checkpoint_model_args[k]
-    # create the model
-    gptconf = GPTConfig(**model_args)
-    model = GPT(gptconf)
-    state_dict = checkpoint['model']
-    # fix the keys of the state dictionary :(
-    # honestly no idea how checkpoints sometimes get this prefix, have to debug more
-    unwanted_prefix = '_orig_mod.'
-    for k,v in list(state_dict.items()):
-        if k.startswith(unwanted_prefix):
-            state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
-    model.load_state_dict(state_dict)
-    iter_num = checkpoint['iter_num']
-    best_val_loss = checkpoint['best_val_loss']
-    model.eval()
-    return model
-
-
-def get_probs (model, data) :
-    logits, _ = model(data)  # N examples by 2 array
-
-    # Example:
-    # Let's assume logits = torch.Tensor([[1, 1], [-1, 1], [0, 0]])
-    # After applying exp(), x will be:
-    # [[e^1,  e^1],    <- logits for [rest pose, non rest pose]
-    #  [e^-1, e^1],    <- logits for [rest pose, non rest pose]
-    #  [e^0,  e^0]]    <- logits for [rest pose, non rest pose]
-    #
-    # x becomes:
-    # [[2.7183, 2.7183],
-    #  [0.3679, 2.7183],
-    #  [1.0000, 1.0000]]
-    #
-    # After summing each row and dividing, probs becomes:
-    # [[0.5,    0.5],    <- probabilities for [rest pose, non rest pose]
-    #  [0.1192, 0.8808], <- probabilities for [rest pose, non rest pose]
-    #  [0.5,    0.5]]    <- probabilities for [rest pose, non rest pose]
-    #
-    # Now each row in probs sums to 1 and all values are between 0 and 1
-
-    # logits are raw numbers that the neural network outputs. These can be positive or negative.
-    # We want to interpret these as probabilities. Probabilities, like percentages, have the property
-    # that they are positive and for each example, they should sum to 1.
-    #
-    # A simple way to make numbers positive is to exponentiate them. e^x is always positive for all x
-    x = torch.exp(logits)
-
-    # Now to make sure that each row sums to 1, we'll divide by the total sum of each row
-    probs = x / torch.sum(x, 1, keepdim=True)  # here 1 means sum across rows. 0 would mean sum across columns (which we don't want to do because ...
-    # ... entries in a column come from different examples)
-    return probs
-
-
 def visualise_video(pose_probe, pose_xvals, video_dir) :
     pose_file, xvalues = next(iter(pose_xvals.items()))
     print (pose_file)
@@ -127,12 +47,6 @@ def visualise_video(pose_probe, pose_xvals, video_dir) :
 
     cap.release()
     cv2.destroyAllWindows()
-
-    # Wait for a key press and break if 'q' is pressed
-    while(True) :
-        if cv2.waitKey(30) & 0xFF == ord('q'):
-            break
-
 
 if __name__ == "__main__" : 
     parser = argparse.ArgumentParser(description="Evaluate model on a pose_sequence.")

@@ -4,7 +4,12 @@ from rest_pose_dataset import *
 import torch
 import isl_utils as islutils
 import pickle
+import numpy as np
 import matplotlib.pyplot as plt
+import cv2
+import os
+from matplotlib.animation import FuncAnimation
+import random
 
 def load_model (model_path) : 
     """ 
@@ -133,6 +138,45 @@ def precision_recall (model, x, y) :
     fig.canvas.mpl_connect("motion_notify_event", hover)
     plt.legend()
 
+def visualise_video(pose_file, xvalues, probs, seq_len) :
+    video_file = islutils.get_video_path_by_hash(islutils.getBaseName(pose_file))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Initialize the video display
+    im = ax1.imshow(np.zeros((480, 640, 3), dtype=np.float32))
+    ax2.scatter([0, max(xvalues)], [0, 1]) # hack to set bounds
+    ln, = ax2.plot([], [], 'r')
+
+    cap = cv2.VideoCapture(video_file)
+    frames = []
+    while True :
+        ret, video_frame = cap.read()
+        if ret:
+            video_frame = cv2.cvtColor(video_frame, cv2.COLOR_BGR2RGB)
+            frames.append(video_frame)
+        else :
+            break
+    frames = frames[seq_len // 2 : seq_len // 2 + len(xvalues)]
+
+    xdata = []
+    ydata = []
+
+    def init () :
+        return im, ln
+    
+    def update (frame) :
+        im.set_array(frames[frame])
+        xdata.append(xvalues[frame])
+        ydata.append(probs[frame])
+        ln.set_data(xdata, ydata)
+        return im, ln
+
+    ani = FuncAnimation(fig, update, list(range(len(xvalues))), init_func=init, blit=True, repeat=False)
+    plt.show()
+
+    cap.release()
+    cv2.destroyAllWindows()
+
 def visualize_false_negatives (model, x, y, threshold, n_vis) : 
     """ 
     We want to see the pose sequences which had ground-truth label 1 but were labelled 0 by the model
@@ -171,7 +215,15 @@ if __name__ == "__main__" :
     parser.add_argument('--pose_dir', default=islutils.POSE_DIR, type=str, help="Path to the pose file.")
     parser.add_argument('--rest_pose_data_dir', default='../rest_pose_dataset/', type=str, help="Directory containing dataset")
     parser.add_argument('--seq_len', default=5, type=int, help="Length of pose sequence sent for inference")
+    parser.add_argument('--show_precision_recall_plot', action='store_true', default=False, help='Show Precision v Recall plot')
+    parser.add_argument('--show_false_negative_vis', action='store_true', default=False, help='Show false negatives i.e. rest poses which weren\'t classified as such')
+    parser.add_argument('--show_video_vis', action='store_true', default=False, help='Show video visualizations')
+    parser.add_argument('--pose_hash_list', default=None, help='File containing hash list of poses to visualize')
+    parser.add_argument('--count_good_poses', action='store_true', default=False, help='Whether to use this utility to count the good pose sequences')
+
     args = parser.parse_args()
+
+    assert islutils.implies(args.count_good_poses, args.show_video_vis), "Inconsistent arguments, something went wrong" 
 
     # load model, you can download the trained parameters from (https://github.com/Vrroom/ISL/releases/download/rest-pose-ckpt/ckpt.pt)
     model = load_model(args.model_checkpoint)
@@ -187,20 +239,32 @@ if __name__ == "__main__" :
     # For a 2D array - [[1, 2], [3, 4, 5], [6, 7]], this operation would convert it into a 1D array - [1, 2, 3, 4, 5, 6, 7]
     N, L, P, D = x.shape 
     x = x.reshape(N, L, P * D) # this does the above "flattening operation" for all x[i][j], 0 <= i < N, 0 <= j < L
-    # Plot precision v recall at various thresholds.
-    print('Plotting precision v recall')
-    precision_recall(model, x, y)
-    plt.show()
 
-    # visualize some false negatives 
-    print('Visualizing some false negatives') 
-    visualize_false_negatives(model, x, y, threshold=0.9, n_vis=10)
+    if args.show_precision_recall_plot: 
+        # Plot precision v recall at various thresholds.
+        print('Plotting precision v recall')
+        precision_recall(model, x, y)
+        plt.show()
+
+    if args.show_false_negative_vis : 
+        # visualize some false negatives 
+        print('Visualizing some false negatives') 
+        visualize_false_negatives(model, x, y, threshold=0.9, n_vis=1)
     
     # now visualize some probabilities
-    all_pose_files = list(islutils.allfiles(args.pose_dir))
+    if args.pose_hash_list is None :
+        all_pose_files = list(islutils.allfiles(args.pose_dir))
+    else :
+        with open(args.pose_hash_list) as fp:  
+            hashes = [_.strip() for _ in fp.readlines()]
+        all_pose_files = [osp.join(args.pose_dir, f'{_}.pkl') for _ in hashes]
+
+    random.shuffle(all_pose_files)
     print(f"Total files to process: {str(len(all_pose_files))}")
 
-    pose_probs = {}
+    good_count = 0
+    bad_count = 0
+
     for count, pose_file in enumerate(all_pose_files) :  
         pose_seq, pose_meta = islutils.load_pose(pose_file)
         width, height = pose_meta['width'], pose_meta['height']
@@ -221,11 +285,23 @@ if __name__ == "__main__" :
         x = x.reshape(N, L, P * D) 
 
         probs = get_probs(model, x)
-        pose_probs[pose_file] = probs 
 
         t = np.array(list(range(seqLength - args.seq_len + 1))) / pose_meta['framerate']
-        rest_pose_prob = probs[:, 1].detach().numpy()
+        rest_pose_prob = probs[:, 1].detach().cpu().numpy()
 
-        plt.plot(t, rest_pose_prob, label='Rest pose probability v time')
-        plt.legend()
-        plt.show()
+        if args.show_video_vis: 
+            visualise_video(pose_file, t, rest_pose_prob, args.seq_len)
+
+        if args.count_good_poses : 
+            while True : 
+                response = input('Is this pose sequence ok? (y/n):')
+                if response in ['y', 'n'] : 
+                    if response.strip() == 'y': 
+                        good_count += 1
+                    else: 
+                        bad_count += 1
+                else : 
+                    print('Please respond with y or n')
+
+    if args.count_good_poses: 
+        print(f'% good poses = {100 * (good_count) / (good_count + bad_count):.3f}')
