@@ -300,6 +300,7 @@ if __name__ == "__main__" :
                         good_count += 1
                     else: 
                         bad_count += 1
+                    break
                 else : 
                     print('Please respond with y or n')
 
