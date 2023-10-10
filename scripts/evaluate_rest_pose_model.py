@@ -139,7 +139,13 @@ def precision_recall (model, x, y) :
     plt.legend()
 
 def visualise_video(pose_file, xvalues, probs, seq_len) :
+    
+    if not os.path.exists(pose_file) :
+        return False
     video_file = islutils.get_video_path_by_hash(islutils.getBaseName(pose_file))
+    if not os.path.exists(video_file) :
+        return False
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
     # Initialize the video display
@@ -176,6 +182,7 @@ def visualise_video(pose_file, xvalues, probs, seq_len) :
 
     cap.release()
     cv2.destroyAllWindows()
+    return True
 
 def visualize_false_negatives (model, x, y, threshold, n_vis) : 
     """ 
@@ -264,6 +271,8 @@ if __name__ == "__main__" :
 
     good_count = 0
     bad_count = 0
+    bad_videos = []
+    missing_videos = []
 
     for count, pose_file in enumerate(all_pose_files) :  
         pose_seq, pose_meta = islutils.load_pose(pose_file)
@@ -288,11 +297,16 @@ if __name__ == "__main__" :
 
         t = np.array(list(range(seqLength - args.seq_len + 1))) / pose_meta['framerate']
         rest_pose_prob = probs[:, 1].detach().cpu().numpy()
+        
+        video_shown = False
+        video_file = islutils.get_video_path_by_hash(islutils.getBaseName(pose_file))
 
         if args.show_video_vis: 
-            visualise_video(pose_file, t, rest_pose_prob, args.seq_len)
-
-        if args.count_good_poses : 
+            video_shown = visualise_video(pose_file, t, rest_pose_prob, args.seq_len)
+        if (not video_shown) :
+            missing_videos.append(video_file)
+    
+        if video_shown and args.count_good_poses : 
             while True : 
                 response = input('Is this pose sequence ok? (y/n):')
                 if response in ['y', 'n'] : 
@@ -300,8 +314,19 @@ if __name__ == "__main__" :
                         good_count += 1
                     else: 
                         bad_count += 1
+                        bad_videos.append(video_file)
+                    break
                 else : 
                     print('Please respond with y or n')
 
     if args.count_good_poses: 
         print(f'% good poses = {100 * (good_count) / (good_count + bad_count):.3f}')
+        if ( bad_count > 0) :
+            print("following videos didnt appear right:")
+            for i in range(len(bad_videos)):
+                print(bad_videos[i])
+        if (len(missing_videos) > 0 ) :
+            print("following videos are missing: ")
+            for i in range(len(missing_videos)) :
+                print(missing_videos[i])
+    
