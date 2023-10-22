@@ -7,7 +7,6 @@ import isl_utils as islutils
 import pandas as pd
 import os
 
-API_KEY = "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"
 #GPT_MODEL = "gpt-3.5-turbo"
 GPT_MODEL = "gpt-4"
 ARG_HELP = "[All|Words|Categorise|Map] All (default) - run all steps; Categorise - categorises the words using chatgpt and saves in wordtext.json file; Words - generate video_title.txt file by analysing the metadata files and retrieving the video titles; Map - puts the word and their categories back into the meta file"
@@ -126,12 +125,13 @@ def main (video_json, step) :
 
 if __name__ == "__main__" : 
 
-    # parser = argparse.ArgumentParser(description="Update video metadata file.")
-    # parser.add_argument('--video_json_dir', required=True, type=str, help="Path to the video json directory.")
+    parser = argparse.ArgumentParser(description="Update video metadata file.")
+    parser.add_argument('--key', required=True, type=str, help="Open API Key")
+    #parser.add_argument('--video_json_dir', required=True, type=str, help="Path to the video json directory.")
     # parser.add_argument('--step', required=False, default="all", type=str, help=ARG_HELP)
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    openai.api_key = API_KEY
+    openai.api_key = args.key
     #main(args.video_json_dir, args.step)
     main('/Users/suvrat/isl/vroom/isl/video_jsons', 'Words')
 
