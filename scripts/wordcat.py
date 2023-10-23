@@ -109,7 +109,7 @@ def update_video_metadata(metadata_table) :
             row_index = metadata_table.index[cond].tolist()[0]
             metadata_table.at[row_index, "Categories"] = catStr
 
-    metadata_table.to_csv('./video_metadata.csv', index = False)
+    metadata_table.to_csv('./video_metadata_categorised.csv', index = False)
 
 
 def main (video_json, step) :
