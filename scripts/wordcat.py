@@ -71,6 +71,47 @@ def gen_word_categories(words_to_categorize, batch, start_index) :
     
     return categorized_words
 
+def extract_titles(metadata_table) :
+    # save titles in a file
+    print("doing words!")
+    titles = []
+    processed_rows = metadata_table[metadata_table['Processed'] == True]
+    print(len(processed_rows))
+    for index, row in processed_rows.iterrows() :
+        titles.append(row['Title'])
+
+    with open ("./video_title.txt", 'w') as video_title_file :
+        for item in titles :
+            video_title_file.write(item + "\n")
+
+def categorise_titles() :
+    # List of English words you want to categorize
+    with open("./video_title.txt", 'r') as wordfile :
+        words_to_categorize = [line.strip() for line in wordfile.readlines() if line.strip()]
+    categorized_words = gen_word_categories(words_to_categorize, 100, 0)
+    
+    with open('wordcat.json', 'w') as f:
+        json.dump(categorized_words, f, ensure_ascii=False)
+
+def update_video_metadata(metadata_table) :
+    with open('./wordcat.json', 'r') as file:
+        json_data = file.read()
+
+    json_data = json_data.replace("'", "\"")
+    categorized_words = json.loads(json_data)
+
+    for title, cat in categorized_words.items() :
+        rows = metadata_table[metadata_table['Title'] == title]
+        catStr = ', '.join(cat)
+        for i in range(len(rows)) :
+            hashvalue = rows.iloc[i]['hash']
+            cond = metadata_table['hash'] == hashvalue
+            row_index = metadata_table.index[cond].tolist()[0]
+            metadata_table.at[row_index, "Categories"] = catStr
+
+    metadata_table.to_csv('./video_metadata.csv', index = False)
+
+
 def main (video_json, step) :
     doAll = doCategorise = doWord = doMap = False
 
@@ -88,56 +129,29 @@ def main (video_json, step) :
         return
 
     if doWord :
-        # save titles in a file
-        print("doing words!")
-        titles = []
-        processed_rows = metadata_table[metadata_table['Processed'] == True]
-        print(len(processed_rows))
-        for index, row in processed_rows.iterrows() :
-            titles.append(row['Title'])
-
-        with open ("./video_title.txt", 'w') as video_title_file :
-            for item in titles :
-                video_title_file.write(item + "\n")
+        print("Extracting titles")
+        extract_titles(metadata_table)
+        print("done")
 
     if doCategorise :
-        # List of English words you want to categorize
         print("Doing Categorisation")
-        with open("./video_title.txt", 'r') as wordfile :
-            words_to_categorize = [line.strip() for line in wordfile.readlines() if line.strip()]
-        categorized_words = gen_word_categories(words_to_categorize, 100, 0)
-        
-        with open('wordcat.json', 'w') as f:
-            json.dump(categorized_words, f, ensure_ascii=False)
+        categorise_titles()
         print("done")
+
 
     if doMap:
         print("Doing Mapping")
-
-        with open('./wordcat.json', 'r') as file:
-            json_data = file.read()
-
-        json_data = json_data.replace("'", "\"")
-        categorized_words = json.loads(json_data)
-
-        for i in range(len(categorized_words)) :
-            title, cat = categorized_words.get(i)
-            row = metadata_table[metadata_table['Title'] == title]
-            catStr = ', '.join(cat)
-            row["Categories"] = catStr 
-
-        metadata_table.to_csv('./video_metadata.csv', index = False)
+        update_video_metadata(metadata_table)
         print("done")
 
 if __name__ == "__main__" : 
 
     parser = argparse.ArgumentParser(description="Update video metadata file.")
     parser.add_argument('--key', required=True, type=str, help="Open API Key")
-    #parser.add_argument('--video_json_dir', required=True, type=str, help="Path to the video json directory.")
-    # parser.add_argument('--step', required=False, default="all", type=str, help=ARG_HELP)
+    parser.add_argument('--video_json_dir', required=True, type=str, help="Path to the video json directory.")
+    parser.add_argument('--step', required=False, default="all", type=str, help=ARG_HELP)
     args = parser.parse_args()
 
     openai.api_key = args.key
-    #main(args.video_json_dir, args.step)
-    main('/Users/suvrat/isl/vroom/isl/video_jsons', 'Map')
+    main(args.video_json_dir, args.step)
 
