@@ -142,7 +142,7 @@ def main (video_json, step) :
     if doMap:
         print("Doing Mapping")
         update_video_metadata(metadata_table)
-        print("done")
+        print("done. Generated video_metadata_categorised.csv in the current directory")
 
 if __name__ == "__main__" : 
 
