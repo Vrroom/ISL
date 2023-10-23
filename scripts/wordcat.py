@@ -27,8 +27,8 @@ def initialise_tables(video_json_dir) :
                 data = json.load(f)
                 video_title = data['title']
                 processed = True
-        metadata_table["Processed"] = processed
-        metadata_table["Title"] = video_title
+        metadata_table.at[index, "Processed"] = processed
+        metadata_table.at[index, "Title"] = video_title
 
     return metadata_table
 
@@ -91,12 +91,10 @@ def main (video_json, step) :
         # save titles in a file
         print("doing words!")
         titles = []
-        for index, row in metadata_table.iterrows() :
-            print(row)
-            pdb.set_trace()
-
-            if (row['Processed']) :
-                titles.append(row['title'])
+        processed_rows = metadata_table[metadata_table['Processed'] == True]
+        print(len(processed_rows))
+        for index, row in processed_rows.iterrows() :
+            titles.append(row['Title'])
 
         with open ("./video_title.txt", 'w') as video_title_file :
             for item in titles :
@@ -104,15 +102,23 @@ def main (video_json, step) :
 
     if doCategorise :
         # List of English words you want to categorize
+        print("Doing Categorisation")
         with open("./video_title.txt", 'r') as wordfile :
             words_to_categorize = [line.strip() for line in wordfile.readlines() if line.strip()]
         categorized_words = gen_word_categories(words_to_categorize, 100, 0)
-            
+        
         with open('wordcat.json', 'w') as f:
-            json.dump(categorized_words, f)
+            json.dump(categorized_words, f, ensure_ascii=False)
+        print("done")
 
     if doMap:
-        categorized_words = json.load('./wordcat.json')
+        print("Doing Mapping")
+
+        with open('./wordcat.json', 'r') as file:
+            json_data = file.read()
+
+        json_data = json_data.replace("'", "\"")
+        categorized_words = json.loads(json_data)
 
         for i in range(len(categorized_words)) :
             title, cat = categorized_words.get(i)
@@ -121,7 +127,7 @@ def main (video_json, step) :
             row["Categories"] = catStr 
 
         metadata_table.to_csv('./video_metadata.csv', index = False)
-
+        print("done")
 
 if __name__ == "__main__" : 
 
@@ -133,5 +139,5 @@ if __name__ == "__main__" :
 
     openai.api_key = args.key
     #main(args.video_json_dir, args.step)
-    main('/Users/suvrat/isl/vroom/isl/video_jsons', 'Words')
+    main('/Users/suvrat/isl/vroom/isl/video_jsons', 'Map')
 
