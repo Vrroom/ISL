@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import os
+import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 import random
 

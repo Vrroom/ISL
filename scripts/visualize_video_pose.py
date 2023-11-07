@@ -15,7 +15,7 @@ mp_pose = mp.solutions.pose
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description='Visualize random video')
-    parser.add_argument('--video_dir', type=str, help='Directory containing videos')
+    parser.add_argument('--video_dir', default=islutils.VIDEO_DIR, type=str, help='Directory containing videos')
     args = parser.parse_args()
 
     # Initialize video capture
