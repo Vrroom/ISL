@@ -1,4 +1,3 @@
-
 import openai
 import pdb
 import json
@@ -7,7 +6,6 @@ import isl_utils as islutils
 import pandas as pd
 import os
 
-#GPT_MODEL = "gpt-3.5-turbo"
 GPT_MODEL = "gpt-4"
 ARG_HELP = "[All|Words|Categorise|Map] All (default) - run all steps; Categorise - categorises the words using chatgpt and saves in wordtext.json file; Words - generate video_title.txt file by analysing the metadata files and retrieving the video titles; Map - puts the word and their categories back into the meta file"
 
@@ -113,20 +111,16 @@ def update_video_metadata(metadata_table) :
 
 
 def main (video_json, step) :
-    doAll = doCategorise = doWord = doMap = False
-
-    metadata_table = initialise_tables(video_json)
-    if step == 'All' :
+    step = step.lower()
+    doCategorise = step == 'categorise'
+    doWord = step == 'words'
+    doMap = step == 'map'
+    if step == 'all' :
         doCategorise = doWord = doMap = True
-    elif step == 'Words' :
-        doWord = True
-    elif step == 'Categorise' :
-        doCategorise = True
-    elif step == 'Map' :
-        doMap = True
-    else :
-        print ("Wrong argument " + step + " passed. Exiting")
         return
+
+    import pdb
+    metadata_table = initialise_tables(video_json)
 
     if doWord :
         print("Extracting titles")

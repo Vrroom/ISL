@@ -16,7 +16,8 @@ import random
 import pickle
 import csv
 import cv2
-from functools import lru_cache
+from functools import lru_cache, reduce, partial
+from more_itertools import flatten
 
 """ Definition of some file/directory paths that are used over and over again """
 ROOT = "../"
@@ -24,6 +25,10 @@ POSE_DIR = osp.join(ROOT, "poses")
 VIDEO_DIR = osp.join(ROOT, "videos")
 VIDEO_METADATA = osp.join(ROOT, "metadata/video_metadata.csv")
 VIDEO_HASH_METADATA = osp.join(ROOT, "metadata/video_hashes.csv")
+VIDEO_JSONS = osp.join(ROOT, 'video_jsons')
+VIDEO_ISLRTC_JSONS = osp.join(VIDEO_JSONS, 'islrtc')
+VIDEO_RKM_JSONS = osp.join(VIDEO_JSONS, 'rkm')
+HASH_TO_TEXT_MAPPING = osp.join(ROOT, "metadata/sign_language_pose_mappings.csv")
 """ end """
 
 def implies(a, b) :
@@ -450,3 +455,90 @@ class BBox :
             (self.X, self.Y),
             (self.X, self.y)
         ])
+
+def merge_dicts (dicts) :
+    return reduce(lambda x, y : {**x, **y}, dicts)
+
+def aggregateDict (listOfDicts, reducer, keys=None, defaultGet=None) :
+    """
+    Very handy function to combine a list of dicts
+    into a dict with the reducer applied by key.
+    """
+    def reducerWithDefault (lst) :
+        try :
+            return reducer(lst)
+        except Exception :
+            return lst
+    if not isinstance(listOfDicts, list) :
+        listOfDicts = list(listOfDicts)
+    if keys is None :
+        keys = list(set(flatten(map(deepKeys, listOfDicts))))
+    aggregator = lambda key : reducerWithDefault(
+        list(map(
+            partial(deepGet, deepKey=key, defaultGet=defaultGet),
+            listOfDicts
+        ))
+    )
+    return deepDict(zip(keys, map(aggregator, keys)))
+
+def dictmap (f, d) :
+    new = dict()
+    for k, v in d.items() :
+        new[k] = f(k, v)
+    return new
+
+def deepKeys (dictionary) :
+    """ iterate over keys of dict of dicts """
+    stack = [((), dictionary)]
+    while len(stack) > 0 :
+        prevKeys, dictionary = stack.pop()
+        for k, v in dictionary.items() :
+            if isinstance(v, dict) :
+                stack.append(((*prevKeys, k), v))
+            else :
+                yield (*prevKeys, k)
+
+def deepGet (dictionary, deepKey, defaultGet=None) :
+    """ get key in a dict of dicts """
+    v = dictionary.get(deepKey[0], defaultGet)
+    if isinstance(v, dict) and len(deepKey) > 1:
+        return deepGet(v, deepKey[1:])
+    else :
+        return v
+
+def deepDict (pairs) :
+    """
+    Create a deep dict a.k.a a dict of dicts
+    where a key may be tuple
+    """
+    d = dict()
+    for k, v in pairs :
+        d_ = d
+        for k_ in k[:-1] :
+            if k_ not in d_ :
+                d_[k_] = dict()
+            d_ = d_[k_]
+        d_[k[-1]] = v
+    return d
+
+def getAll(thing, key) :
+    """
+    Traverse a dict or list of dicts
+    in preorder and yield all the values
+    for given key
+    """
+    if isinstance(thing, dict) :
+        if key in thing :
+            yield thing[key]
+        for val in thing.values() :
+            yield from getAll(val, key)
+    elif isinstance(thing, list) :
+        for val in thing :
+            yield from getAll(val, key)
+
+def f7(seq):
+    """ Copied from somewhere on Stack Overflow """
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
