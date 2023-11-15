@@ -18,6 +18,7 @@ import csv
 import cv2
 from functools import lru_cache, reduce, partial
 from more_itertools import flatten
+from skimage import transform
 
 """ Definition of some file/directory paths that are used over and over again """
 ROOT = "../"
@@ -30,6 +31,11 @@ VIDEO_ISLRTC_JSONS = osp.join(VIDEO_JSONS, 'islrtc')
 VIDEO_RKM_JSONS = osp.join(VIDEO_JSONS, 'rkm')
 HASH_TO_TEXT_MAPPING = osp.join(ROOT, "metadata/sign_language_pose_mappings.csv")
 """ end """
+
+def config_plot(ax):
+    """ Function to remove axis tickers and box around a given axis """
+    ax.set_frame_on(False)
+    ax.axis('off')
 
 def implies(a, b) :
     return not a or b
@@ -541,4 +547,67 @@ def f7(seq):
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
+
+def perspective_multiply(M, x):
+    """
+    Apply a perspective transformation to a set of 2D points.
+
+    Args:
+        M (numpy.ndarray): A 3x3 matrix representing the perspective transformation.
+                          The matrix should be in the form of a numpy array with shape [3, 3].
+        x (numpy.ndarray): An array of 2D points to be transformed.
+                          Each point is represented as a row in this array, with the array having shape [N, 2],
+                          where N is the number of points.
+
+    Returns:
+        numpy.ndarray: An array of transformed 2D points, with shape [N, 2].
+                      The transformation is applied using the matrix M, and the points are then converted back to non-homogeneous coordinates.
+    """
+    N, _ = x.shape
+    x_hom = np.concatenate((x, np.ones((N, 1))), axis=1)
+    y_hom = ((M @ x_hom.T).T)
+    y = y_hom[:, :-1] / y_hom[:, -1:]
+    return y
+
+def rand_perspective_transform_pose_sequence (normed_pos_seq, scale=0.4) : 
+    """ Applies random perspective transform on the normalized pose sequence and renormalizes the result """
+    normed_warped_pose_seq = deepcopy(normed_pos_seq)
+
+    src = np.array([[-1.0, -1.0], [-1.0, 1.0], [1.0, 1.0], [1.0, -1.0]])
+    dst = src + 0.4 * np.random.randn(*src.shape)
+
+    rand_perp = transform.ProjectiveTransform()
+    rand_perp.estimate(src, dst)
+
+    L = len(normed_pos_seq)
+
+    xs = list(flatten([[_['x'] for _ in normed_pos_seq[i]['landmarks']] for i in range(L)]))
+    ys = list(flatten([[_['y'] for _ in normed_pos_seq[i]['landmarks']] for i in range(L)]))
+
+    xs = np.array(xs)
+    ys = np.array(ys)
+
+    pts = np.stack((xs, ys)).T
+
+    new_pts = perspective_multiply(rand_perp.params, pts)
+
+    minx, maxx, miny, maxy = new_pts[:, 0].min(), new_pts[:, 0].max(), new_pts[:, 1].min(), new_pts[:, 1].max()
+    box = BBox(minx, miny, maxx, maxy, maxx - minx, maxy - miny)
+    # now fit a square shaped box
+    nbox = box.normalized()
+    center = nbox.center()
+    cx, cy = center.real, center.imag
+    side = nbox.h
+
+    new_pts[:, 0] -= cx
+    new_pts[:, 1] -= cy
+    new_pts *= 2.0 / side
+    new_pts = new_pts.reshape(L, -1, 2)
+
+    for i in range(L) : 
+        for j in range(33): 
+            normed_warped_pose_seq[i]['landmarks'][j]['x'] = new_pts[i, j, 0]
+            normed_warped_pose_seq[i]['landmarks'][j]['y'] = new_pts[i, j, 1]
+    
+    return normed_warped_pose_seq
 
