@@ -23,6 +23,7 @@ if __name__ == "__main__" :
     parser.add_argument('--pose_hash', default=None, type=str, help='(Optional) Hash of the pose sequence')
     parser.add_argument('--vis_bounds', action='store_true', default=False, help='(Optional) Visualize bounds of the pose sequence')
     parser.add_argument('--normalize', action='store_true', default=False, help='(Optional) Normalize the pose in a [-1, 1] by [-1, 1] box. Uses matplotlib for visualizing. Incompatible with some other options')
+    parser.add_argument('--perspective_augment', action='store_true', default=False, help='(Optional) Visualize perspective augmentation')
 
     args = parser.parse_args()
 
@@ -43,25 +44,57 @@ if __name__ == "__main__" :
     if args.normalize: 
         n_pose_sequence = islutils.normalize_pose_sequence(pose_sequence, width, height)
 
-        # visualize stuff
-        fig, ax = plt.subplots()
-        scatter = ax.scatter([1.5, -1.5], [1.5, -1.5])
+        if args.perspective_augment : 
+            augs_to_show = 4
+            
+            augmented_pose_seqs = [islutils.rand_perspective_transform_pose_sequence(n_pose_sequence) for _ in range(augs_to_show)]
+            fig, ax = plt.subplots(1, 1 + augs_to_show)
 
-        def init():
-            ax.set_aspect('equal', 'box')
-            return scatter,
+            [islutils.config_plot(_) for _ in ax] 
 
-        def update(frame):
-            x_data = [n_pose_sequence[frame]['landmarks'][j]['x'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
-            y_data = [n_pose_sequence[frame]['landmarks'][j]['y'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
-            scatter.set_offsets(list(zip(x_data, y_data)))
-            print(frame)
-            return scatter,
+            scatters = [_.scatter([1.5, -1.5], [1.5, -1.5]) for _ in ax]
 
-        print('Pose hash ...', pose_hash)
-        print('Pose length ...', len(n_pose_sequence))
-        ani = FuncAnimation(fig, update, frames=range(len(n_pose_sequence)), init_func=init, blit=True, repeat=False)
-        plt.show()
+            def init() : 
+                for _ in ax : 
+                    _.set_aspect('equal', 'box')
+                return scatters
+
+            def update(frame):
+                x_data = [n_pose_sequence[frame]['landmarks'][j]['x'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
+                y_data = [n_pose_sequence[frame]['landmarks'][j]['y'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
+                scatters[0].set_offsets(list(zip(x_data, y_data)))
+
+                for i in range(augs_to_show) : 
+                    x_data = [augmented_pose_seqs[i][frame]['landmarks'][j]['x'] for j in range(len(augmented_pose_seqs[i][frame]['landmarks']))]
+                    y_data = [augmented_pose_seqs[i][frame]['landmarks'][j]['y'] for j in range(len(augmented_pose_seqs[i][frame]['landmarks']))]
+                    scatters[i + 1].set_offsets(list(zip(x_data, y_data)))
+
+                return scatters
+
+            print('Pose hash ...', pose_hash)
+            print('Pose length ...', len(n_pose_sequence))
+            ani = FuncAnimation(fig, update, frames=range(len(n_pose_sequence)), init_func=init, blit=True, repeat=False)
+            plt.show()
+
+        else: 
+            # visualize stuff
+            fig, ax = plt.subplots()
+            scatter = ax.scatter([1.5, -1.5], [1.5, -1.5])
+
+            def init():
+                ax.set_aspect('equal', 'box')
+                return scatter,
+
+            def update(frame):
+                x_data = [n_pose_sequence[frame]['landmarks'][j]['x'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
+                y_data = [n_pose_sequence[frame]['landmarks'][j]['y'] for j in range(len(n_pose_sequence[frame]['landmarks']))]
+                scatter.set_offsets(list(zip(x_data, y_data)))
+                return scatter,
+
+            print('Pose hash ...', pose_hash)
+            print('Pose length ...', len(n_pose_sequence))
+            ani = FuncAnimation(fig, update, frames=range(len(n_pose_sequence)), init_func=init, blit=True, repeat=False)
+            plt.show()
 
     else:
         xs, ys = [], []
