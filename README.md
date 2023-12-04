@@ -9,14 +9,14 @@ On the other hand, these NGOs have done a great work to upload videos teaching t
 The proposal that this paper makes is to use ML technologies to assist in translating the ISL gestures into a natural language, and vice versa. This proposal envisions that the fully equipped person will have a purpose built app on her phone. This app will facilitate communication with the deaf person in the following manner:
 
 Deaf person speaking:
-* Full bodied (FB) person will run the app and turn the camera towards the deaf person (DP). 
+* Hearing person (HP) will run the app and turn the camera towards the deaf person (DP). 
 * Camera records the DP's hand/body gestures and movements. 
 * These gestures are then run through the AI prediction to generate an equivalent English text, which is either shown on the screen or spoken through the phone microphone.
 
-Full bodied person speaking:
-* FB person runs the app and speaks into it. 
+Hearing person (HP) speaking:
+* HP runs the app and speaks into it. 
 * The speech is translated into text and that is then further translated into a sequence of ISL gestures by the ML algorithm. 
-* These gestures are then applied on a preselected photo of the FB person to build a video, as if the FB person is speaking in ISL.
+* These gestures are then applied on a preselected photo of the FB person to build a video, as if the HP person is speaking in ISL.
 * The video is seen on the app by the DP.
 
 ## Opportunity
